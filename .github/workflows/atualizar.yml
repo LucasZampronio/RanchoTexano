@@ -2,7 +2,7 @@ name: Atualizar avaliações
 
 on:
   schedule:
-    - cron: "0 10 * * *"   # todo dia às 7h (horário de Brasília)
+    - cron: "0 1 * * *"    # todo dia às 22h (horário de Brasília)
   workflow_dispatch:
     inputs:
       modo:
