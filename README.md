@@ -2,7 +2,7 @@
 
 Dashboard das avaliações do Google Maps das lojas **Capão da Canoa**, **Ipiranga (Porto Alegre)** e **Novo Hamburgo**, com relatórios anual, mensal e diário. As avaliações abaixo de 4★ são classificadas por tema (tempo de espera, atendimento, comida, preço, ambiente, limpeza, delivery).
 
-Uma GitHub Action coleta as avaliações novas todo dia às 7h, atualiza o `dados.json` e o GitHub Pages publica o dashboard atualizado.
+Uma GitHub Action coleta as avaliações novas todo dia às 22h, atualiza o `dados.json` e o GitHub Pages publica o dashboard atualizado.
 
 ## Estrutura
 
@@ -25,7 +25,7 @@ Uma GitHub Action coleta as avaliações novas todo dia às 7h, atualiza o `dado
 5. **Limite de histórico (opcional):** para não buscar avaliações muito antigas, crie em *Settings → Secrets and variables → Actions → aba Variables* a variável `DATA_INICIO` (por exemplo `2025-01-01`).
 6. **Primeira coleta:** em *Actions → Atualizar avaliações → Run workflow*, rode no modo `diario`.
 
-Depois disso, tudo roda sozinho todo dia às 7h.
+Depois disso, tudo roda sozinho todo dia às 22h.
 
 ## Como funciona no plano gratuito do SerpApi (250 buscas/mês)
 
