@@ -3,16 +3,24 @@
 Coleta as avaliações do Google Maps das lojas em lojas.json (via SerpApi),
 classifica os temas das avaliações abaixo de 4 estrelas e atualiza dados.json.
 
+Pensado para caber no plano GRATUITO do SerpApi (250 buscas/mês):
+  1. Coleta diária: busca as avaliações mais novas de cada loja e para na primeira
+     já salva (normalmente 1 busca por loja).
+  2. Histórico aos poucos: as buscas que sobram no mês continuam de onde pararam
+     ontem, trazendo avaliações antigas, sempre guardando uma reserva para a
+     coleta diária até o fim do mês. O progresso fica em estado.json.
+
 Variáveis de ambiente:
-  SERPAPI_KEY        (obrigatória) chave do SerpApi
-  ANTHROPIC_API_KEY  (opcional)    classifica temas com o Claude; sem ela, usa palavras-chave
-  MODO               "diario" (padrão) busca só as novas | "completo" busca o histórico
-  DATA_INICIO        (opcional, AAAA-MM-DD) no modo completo, para ao chegar nessa data
-  MAX_PAGINAS        (opcional) limite de páginas por loja; padrão 5 no diário, 500 no completo
+  SERPAPI_KEY            (obrigatória) chave do SerpApi
+  ANTHROPIC_API_KEY      (opcional) classifica temas com o Claude; sem ela, usa palavras-chave
+  MODO                   "diario" (padrão) | "completo" = busca todo o histórico de uma vez (plano pago)
+  DATA_INICIO            (opcional, AAAA-MM-DD) não busca avaliações anteriores a essa data
+  HISTORICO_POR_DIA      (opcional) máximo de páginas de histórico por dia, somando as lojas (padrão 5)
+  RESERVA_BUSCAS         (opcional) buscas guardadas para a coleta diária (padrão 3 lojas x 31 dias)
 
 Usa só a biblioteca padrão do Python.
 """
-import json, os, re, sys, time, urllib.parse, urllib.request
+import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -20,7 +28,9 @@ from zoneinfo import ZoneInfo
 RAIZ = Path(__file__).resolve().parent.parent
 ARQ_LOJAS = RAIZ / "lojas.json"
 ARQ_DADOS = RAIZ / "dados.json"
+ARQ_ESTADO = RAIZ / "estado.json"
 FUSO = ZoneInfo("America/Sao_Paulo")
+API = "https://serpapi.com/search.json"
 
 TEMAS = ["Tempo de espera", "Atendimento", "Comida", "Preço", "Ambiente", "Limpeza", "Delivery", "Outros"]
 
@@ -46,11 +56,18 @@ def get_json(url, params, tentativas=3):
         try:
             with urllib.request.urlopen(q, timeout=60) as r:
                 return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            corpo = e.read().decode("utf-8", "replace")
+            try:
+                return json.loads(corpo)  # o SerpApi devolve {"error": "..."} com status de erro
+            except ValueError:
+                if t == tentativas - 1:
+                    raise
         except Exception as e:  # noqa: BLE001
             if t == tentativas - 1:
                 raise
             log(f"  falha ({e}); tentando de novo em {5 * (t + 1)}s")
-            time.sleep(5 * (t + 1))
+        time.sleep(5 * (t + 1))
 
 
 def data_local(iso):
@@ -63,11 +80,36 @@ def data_local(iso):
     return dt.astimezone(FUSO).date().isoformat()
 
 
+def ler_json(caminho, padrao):
+    return json.loads(caminho.read_text(encoding="utf-8")) if caminho.exists() else padrao
+
+
+def gravar_json(caminho, obj, compacto=False):
+    txt = json.dumps(obj, ensure_ascii=False, separators=(",", ":")) if compacto \
+        else json.dumps(obj, ensure_ascii=False, indent=2) + "\n"
+    caminho.write_text(txt, encoding="utf-8")
+
+
 # ---------------- SerpApi ----------------
-def resolver_data_id(loja, chave):
+class Contador:
+    def __init__(self):
+        self.usadas = 0
+
+
+def buscas_restantes(chave):
+    """Consulta o saldo da conta (essa consulta não gasta busca)."""
+    try:
+        r = get_json("https://serpapi.com/account.json", {"api_key": chave})
+        return int(r.get("plan_searches_left", r.get("total_searches_left", 0)))
+    except Exception as e:  # noqa: BLE001
+        log(f"Não consegui ler o saldo da conta ({e}); histórico fica para amanhã.")
+        return 0
+
+
+def resolver_data_id(loja, chave, cont):
     log(f"Procurando o data_id de {loja['nome']} ({loja['busca']})")
-    r = get_json("https://serpapi.com/search.json",
-                 {"engine": "google_maps", "type": "search", "q": loja["busca"], "hl": "pt-BR", "api_key": chave})
+    r = get_json(API, {"engine": "google_maps", "type": "search", "q": loja["busca"], "hl": "pt-BR", "api_key": chave})
+    cont.usadas += 1
     if r.get("place_results", {}).get("data_id"):
         return r["place_results"]["data_id"]
     for item in r.get("local_results", []):
@@ -76,47 +118,83 @@ def resolver_data_id(loja, chave):
     raise RuntimeError(f"Não encontrei a loja '{loja['busca']}'. Preencha o data_id dela no lojas.json.")
 
 
-def coletar_loja(loja, chave, conhecidos, modo, max_paginas, data_inicio):
-    novas, token, paginas, seguidas_conhecidas = [], None, 0, 0
-    while paginas < max_paginas:
-        params = {"engine": "google_maps_reviews", "data_id": loja["data_id"], "hl": "pt-BR",
-                  "sort_by": "newestFirst", "api_key": chave}
-        if token:
-            params.update({"next_page_token": token, "num": 20})
-        r = get_json("https://serpapi.com/search.json", params)
-        if r.get("error"):
-            raise RuntimeError(f"SerpApi: {r['error']}")
-        paginas += 1
-        revs = r.get("reviews", [])
-        parar = False
+def buscar_pagina(loja, chave, token, cont):
+    params = {"engine": "google_maps_reviews", "data_id": loja["data_id"], "hl": "pt-BR",
+              "sort_by": "newestFirst", "api_key": chave}
+    if token:
+        params.update({"next_page_token": token, "num": 20})
+    r = get_json(API, params)
+    if r.get("error"):
+        # "sem resultados" no fim da lista não é falha
+        if "hasn't returned any results" in r["error"]:
+            return [], None
+        raise RuntimeError(r["error"])
+    cont.usadas += 1
+    return r.get("reviews", []), (r.get("serpapi_pagination") or {}).get("next_page_token")
+
+
+def converter(rv, loja_id):
+    rid, data = rv.get("review_id"), data_local(rv.get("iso_date"))
+    nota = int(round(float(rv.get("rating") or 0)))
+    if not rid or not data or not 1 <= nota <= 5:
+        return None
+    reg = {"id": rid, "loja": loja_id, "data": data, "nota": nota}
+    if nota < 4:
+        texto = (rv.get("extracted_snippet") or {}).get("original") or rv.get("snippet") or ""
+        reg["comentario"] = texto.strip()
+        reg["respondida"] = bool(rv.get("response"))
+    return reg
+
+
+def coleta_recentes(loja, chave, por_id, cont, max_paginas, data_inicio):
+    """Mais novas primeiro, até achar uma já salva. Devolve (novas, token_da_proxima_pagina)."""
+    novas, token = 0, None
+    for pagina in range(1, max_paginas + 1):
+        revs, prox = buscar_pagina(loja, chave, token, cont)
+        achou_conhecida = False
         for rv in revs:
-            rid = rv.get("review_id")
-            if not rid:
+            reg = converter(rv, loja["id"])
+            if not reg:
                 continue
-            data = data_local(rv.get("iso_date"))
-            if data_inicio and data and data < data_inicio:
-                parar = True
-                break
-            if rid in conhecidos:
-                seguidas_conhecidas += 1
-                # no modo diário, achar uma já salva basta: dali para trás está tudo coletado
-                if modo == "diario":
-                    parar = True
+            if data_inicio and reg["data"] < data_inicio:
+                return novas, None
+            if reg["id"] in por_id:
+                achou_conhecida = True
                 continue
-            seguidas_conhecidas = 0
-            texto = (rv.get("extracted_snippet") or {}).get("original") or rv.get("snippet") or ""
-            nota = int(round(float(rv.get("rating") or 0)))
-            if not 1 <= nota <= 5 or not data:
-                continue
-            reg = {"id": rid, "loja": loja["id"], "data": data, "nota": nota}
-            if nota < 4:
-                reg["comentario"] = texto.strip()
-                reg["respondida"] = bool(rv.get("response"))
-            novas.append(reg)
-        token = (r.get("serpapi_pagination") or {}).get("next_page_token")
-        log(f"  página {paginas}: {len(revs)} avaliações, {len(novas)} novas até agora")
-        if parar or not token or not revs:
+            por_id[reg["id"]] = reg
+            novas += 1
+        log(f"  recentes, página {pagina}: {novas} novas")
+        token = prox
+        if achou_conhecida or not prox or not revs:
             break
+    return novas, token
+
+
+def coleta_historico(loja, chave, por_id, cont, est, data_inicio):
+    """Uma página de histórico, continuando do token salvo. Devolve quantas novas."""
+    try:
+        revs, prox = buscar_pagina(loja, chave, est.get("token"), cont)
+    except RuntimeError as e:
+        log(f"  token do histórico não funcionou ({e}); recomeça amanhã a partir das mais novas")
+        est.update({"token": None, "iniciado": False})
+        return 0
+    novas, passou_inicio = 0, False
+    for rv in revs:
+        reg = converter(rv, loja["id"])
+        if not reg:
+            continue
+        if data_inicio and reg["data"] < data_inicio:
+            passou_inicio = True
+            break
+        if reg["id"] not in por_id:
+            por_id[reg["id"]] = reg
+            novas += 1
+    est["token"] = prox
+    est["paginas"] = est.get("paginas", 0) + 1
+    if not prox or not revs or passou_inicio:
+        est["completo"] = True
+        est["token"] = None
+        log(f"  histórico de {loja['nome']} completo")
     return novas
 
 
@@ -135,7 +213,7 @@ def temas_com_claude(itens, chave):
         linhas = "\n".join(json.dumps({"id": k, "nota": n, "texto": t[:1200]}, ensure_ascii=False) for k, n, t in lote)
         prompt = (
             "Você classifica avaliações negativas de restaurantes. Para cada avaliação, escolha de 1 a 3 temas "
-            f"desta lista fechada: {', '.join(TEMAS)}. Use 'Outros' só se nenhum servir. Avaliação sem texto vira ['Outros'].\n"
+            f"desta lista fechada: {', '.join(TEMAS)}. Use 'Outros' só se nenhum servir.\n"
             "Responda APENAS com um array JSON no formato [{\"id\": \"...\", \"temas\": [\"...\"]}], sem texto extra.\n\n"
             + linhas
         )
@@ -176,42 +254,77 @@ def main():
     chave = os.environ.get("SERPAPI_KEY")
     if not chave:
         sys.exit("Defina SERPAPI_KEY (no GitHub: Settings > Secrets and variables > Actions).")
-    modo = os.environ.get("MODO", "diario").strip() or "diario"
-    max_paginas = int(os.environ.get("MAX_PAGINAS") or (500 if modo == "completo" else 5))
+    modo = (os.environ.get("MODO") or "diario").strip()
     data_inicio = (os.environ.get("DATA_INICIO") or "").strip() or None
 
-    lojas = json.loads(ARQ_LOJAS.read_text(encoding="utf-8"))
-    dados = json.loads(ARQ_DADOS.read_text(encoding="utf-8")) if ARQ_DADOS.exists() else {"avaliacoes": []}
+    lojas = ler_json(ARQ_LOJAS, [])
+    dados = ler_json(ARQ_DADOS, {"avaliacoes": []})
+    estado = ler_json(ARQ_ESTADO, {"historico": {}})
     por_id = {a["id"]: a for a in dados.get("avaliacoes", []) if a.get("id")}
+    cont = Contador()
 
-    mudou_lojas = False
-    for loja in lojas:
-        if not loja.get("data_id"):
-            loja["data_id"] = resolver_data_id(loja, chave)
-            mudou_lojas = True
-    if mudou_lojas:
-        ARQ_LOJAS.write_text(json.dumps(lojas, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if any(not l.get("data_id") for l in lojas):
+        for loja in lojas:
+            if not loja.get("data_id"):
+                loja["data_id"] = resolver_data_id(loja, chave, cont)
+        gravar_json(ARQ_LOJAS, lojas)
 
-    total_novas = 0
+    antes = len(por_id)
+    hist = estado.setdefault("historico", {})
+
+    # 1. Coleta das mais recentes
     for loja in lojas:
-        log(f"Coletando {loja['nome']} (modo {modo})")
-        conhecidos = {k for k, a in por_id.items() if a["loja"] == loja["id"]}
-        novas = coletar_loja(loja, chave, conhecidos, modo, max_paginas, data_inicio)
-        for n in novas:
-            por_id[n["id"]] = n
-        total_novas += len(novas)
+        log(f"{loja['nome']}: avaliações recentes")
+        est = hist.setdefault(loja["id"], {"token": None, "iniciado": False, "completo": False, "paginas": 0})
+        primeira_vez = not any(a["loja"] == loja["id"] for a in por_id.values())
+        _, token = coleta_recentes(loja, chave, por_id, cont, 5 if primeira_vez else 3, data_inicio)
+        if not est.get("iniciado") and not est.get("completo"):
+            # o histórico começa logo depois das páginas recentes já lidas
+            est.update({"token": token, "iniciado": True, "completo": token is None})
+
+    # 2. Histórico
+    pendentes = [l for l in lojas if not hist[l["id"]].get("completo") and hist[l["id"]].get("token")]
+    if pendentes:
+        if modo == "completo":
+            limite = 10_000
+        else:
+            reserva = int(os.environ.get("RESERVA_BUSCAS") or 3 * 31)
+            por_dia = int(os.environ.get("HISTORICO_POR_DIA") or 5)
+            saldo = buscas_restantes(chave)
+            limite = max(0, min(por_dia, saldo - reserva))
+            log(f"Histórico: saldo {saldo} buscas, reserva {reserva}, hoje até {limite} páginas")
+        feitas = 0
+        while feitas < limite and pendentes:
+            for loja in list(pendentes):
+                if feitas >= limite:
+                    break
+                est = hist[loja["id"]]
+                n = coleta_historico(loja, chave, por_id, cont, est, data_inicio)
+                feitas += 1
+                log(f"  {loja['nome']}: +{n} do histórico (página {est.get('paginas')})")
+                if est.get("completo") or not est.get("token"):
+                    pendentes.remove(loja)
 
     avaliacoes = sorted(por_id.values(), key=lambda a: (a["data"], a["loja"], a["id"]))
     classificar(avaliacoes)
 
-    dados = {
-        "atualizado_em": datetime.now(FUSO).isoformat(timespec="seconds"),
+    progresso = {}
+    for loja in lojas:
+        datas = [a["data"] for a in avaliacoes if a["loja"] == loja["id"]]
+        progresso[loja["id"]] = {"completo": bool(hist.get(loja["id"], {}).get("completo")),
+                                 "desde": min(datas) if datas else None}
+
+    estado["ultima_execucao"] = datetime.now(FUSO).isoformat(timespec="seconds")
+    estado["buscas_ultima_execucao"] = cont.usadas
+    gravar_json(ARQ_ESTADO, estado)
+    gravar_json(ARQ_DADOS, {
+        "atualizado_em": estado["ultima_execucao"],
         "fonte": "Avaliações públicas do Google Maps",
         "lojas": [{"id": l["id"], "nome": l["nome"]} for l in lojas],
+        "historico": progresso,
         "avaliacoes": avaliacoes,
-    }
-    ARQ_DADOS.write_text(json.dumps(dados, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    log(f"Pronto: {total_novas} avaliações novas, {len(avaliacoes)} no total.")
+    }, compacto=True)
+    log(f"Pronto: {len(por_id) - antes} avaliações novas, {len(avaliacoes)} no total, {cont.usadas} buscas usadas.")
 
 
 if __name__ == "__main__":

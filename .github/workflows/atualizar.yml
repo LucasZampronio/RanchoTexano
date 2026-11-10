@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: "diario = só as novas | completo = busca o histórico"
+        description: "diario = novas + um pouco do histórico (plano grátis) | completo = todo o histórico de uma vez (plano pago)"
         type: choice
         options: [diario, completo]
         default: diario
       data_inicio:
-        description: "Só no modo completo: buscar até esta data (AAAA-MM-DD). Vazio = histórico todo"
+        description: "Não buscar avaliações anteriores a esta data (AAAA-MM-DD). Vazio = histórico todo"
         required: false
         default: ""
 
@@ -38,14 +38,14 @@ jobs:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MODO: ${{ github.event.inputs.modo || 'diario' }}
-          DATA_INICIO: ${{ github.event.inputs.data_inicio }}
+          DATA_INICIO: ${{ github.event.inputs.data_inicio || vars.DATA_INICIO }}
         run: python scripts/coletar.py
 
       - name: Salvar no repositório
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dados.json lojas.json
+          git add dados.json lojas.json estado.json
           if git diff --cached --quiet; then
             echo "Nada mudou."
           else

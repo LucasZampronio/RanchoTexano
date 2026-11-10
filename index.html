@@ -357,6 +357,9 @@ carregar().then(dados=>{
   const datas=D.avaliacoes.map(r=>r.data).sort(); D.min=datas[0]; D.max=datas[datas.length-1];
   atualizado.textContent=`${D.lojas.map(l=>l.nome).join(' · ')} — atualizado em ${new Date(D.atualizado_em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · dados até ${dataBR(D.max)}`;
   if(D.fonte){fonte.hidden=false;fonte.textContent=D.fonte}
+  const hist=D.historico||{}, incomp=D.lojas.filter(l=>hist[l.id]&&!hist[l.id].completo);
+  if(incomp.length){const desde=incomp.map(l=>hist[l.id].desde).filter(Boolean).sort().pop();
+    fonte.hidden=false;fonte.textContent=`Histórico ainda sendo carregado (alguns dias por vez): dados completos a partir de ${desde?dataBR(desde):'—'}. Comparações com períodos anteriores a essa data ficam incompletas.`}
   fLoja.innerHTML=`<button data-v="todas">Todas</button>`+D.lojas.map(l=>`<button data-v="${l.id}">${esc(l.nome)}</button>`).join('');
   const anos=[...new Set(datas.map(d=>+d.slice(0,4)))].sort((a,b)=>b-a);
   selAno.innerHTML=anos.map(a=>`<option>${a}</option>`).join('');

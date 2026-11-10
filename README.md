@@ -22,16 +22,19 @@ Uma GitHub Action coleta as avaliações novas todo dia às 7h, atualiza o `dado
    - `SERPAPI_KEY`
    - `ANTHROPIC_API_KEY` (se tiver)
 4. **GitHub Pages:** em *Settings → Pages*, escolha *Deploy from a branch*, branch `main`, pasta `/ (root)`.
-5. **Primeira coleta (histórico):** em *Actions → Atualizar avaliações → Run workflow*, escolha o modo `completo`. Para gastar menos, preencha `data_inicio` (por exemplo `2025-01-01`).
+5. **Limite de histórico (opcional):** para não buscar avaliações muito antigas, crie em *Settings → Secrets and variables → Actions → aba Variables* a variável `DATA_INICIO` (por exemplo `2025-01-01`).
+6. **Primeira coleta:** em *Actions → Atualizar avaliações → Run workflow*, rode no modo `diario`.
 
-Depois disso, a coleta diária roda sozinha.
+Depois disso, tudo roda sozinho todo dia às 7h.
 
-## Custos do SerpApi
+## Como funciona no plano gratuito do SerpApi (250 buscas/mês)
 
-Cada página de avaliações conta como uma busca no SerpApi.
+Cada página de avaliações conta como uma busca.
 
-- **Modo diário:** cerca de 1 busca por loja por dia, ou seja, ~90 por mês.
-- **Modo completo:** cerca de 1 busca a cada 20 avaliações de cada loja.
+- **Avaliações novas:** todo dia, cerca de 1 busca por loja (~90 por mês).
+- **Histórico:** as buscas que sobram no mês trazem as avaliações antigas, até 5 páginas (~100 avaliações) por dia, continuando de onde parou. O script sempre guarda uma reserva para a coleta diária até o fim do mês.
+- O progresso fica em `estado.json`, e o dashboard avisa enquanto o histórico ainda está sendo carregado.
+- **Quer o histórico de uma vez?** Assine um plano pago por um mês e rode a Action no modo `completo`.
 
 ## Observações
 
