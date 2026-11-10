@@ -220,9 +220,14 @@ function render(){
   document.querySelectorAll('#fLoja button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.loja));
   document.querySelectorAll('#fPeriodo button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.periodo));
   selAno.hidden=S.periodo!=='anual'; selMes.hidden=S.periodo!=='mensal'; selDia.hidden=S.periodo!=='diario';
-  const P=periodo(), L=sel(S.loja,P.ini,P.fim), Lp=sel(S.loja,P.pIni,P.pFim), c=stats(L), p=stats(Lp);
+  const P=periodo(), L=sel(S.loja,P.ini,P.fim), c=stats(L), cd=completoDesde(S.loja);
+  P.incompleto=!!(cd&&P.ini<cd); P.semBase=!!(cd&&P.pIni<cd);
+  const p=P.semBase?stats([]):stats(sel(S.loja,P.pIni,P.pFim));
+  if(P.semBase)P.vs='';
   renderKpis(c,p,P); renderInsights(c,p,P,L); renderGraficos(P,L,c,p); renderComp(P); renderComentarios(c.neg);
 }
+function completoDesde(loja){const h=D.historico||{};let d=null;
+  (loja==='todas'?D.lojas.map(l=>l.id):[loja]).forEach(id=>{const x=h[id];if(x&&!x.completo&&x.desde&&(!d||x.desde>d))d=x.desde});return d}
 function delta(cur,prev,{pct=false,bomQuandoSobe=true,diario=false,n=0}={}){
   if(cur==null||prev==null)return `<span>sem base de comparação</span>`;
   const d=cur-prev; if(Math.abs(d)<(pct?0.005:0.05))return `<span>estável</span>`;
@@ -244,6 +249,8 @@ function topTema(t){const e=Object.entries(t).sort((a,b)=>b[1]-a[1]);return e[0]
 function renderInsights(c,p,P,L){
   const out=[];
   if(!c.n){insights.innerHTML='<li>Nenhuma avaliação registrada neste período.</li>';return}
+  if(P.incompleto)out.push(`<b>Atenção:</b> o histórico ainda está sendo carregado; este período só está completo a partir de ${dataBR(completoDesde(S.loja))}.`);
+  else if(P.semBase)out.push(`Sem comparação com o período anterior: o histórico ainda está sendo carregado.`);
   if(c.media!=null&&p.media!=null){const d=c.media-p.media;
     out.push(Math.abs(d)<0.05?`Nota média estável em <b>${f1(c.media)}</b> (${P.vs}).`
       :`Nota média ${d>0?'subiu':'caiu'} para <b>${f1(c.media)}</b>, ${d>0?'+':'−'}${f1(Math.abs(d))} ${P.vs}.`)}
@@ -253,7 +260,7 @@ function renderInsights(c,p,P,L){
     if(!P.diario&&prevN){const v=(tt[1]/prevN-1);var_=Math.abs(v)>=0.15?`, ${v>0?'alta':'queda'} de ${Math.abs(Math.round(v*100))}% em menções ${P.vs}`:''}
     out.push(`<b>${tt[0]}</b> é o principal motivo das notas baixas: aparece em ${fpct(share)} das avaliações abaixo de 4★${var_}.`);
     const subiu=Object.keys(c.temas).map(t=>[t,c.temas[t]-(p.temas[t]||0)*(P.diario?1/30:1)]).filter(([t])=>t!==tt[0]).sort((a,b)=>b[1]-a[1])[0];
-    if(!P.diario&&subiu&&subiu[1]>=3)out.push(`Atenção para <b>${subiu[0]}</b>: ${Math.round(subiu[1])} menções a mais que no período anterior.`);
+    if(!P.diario&&p.n&&subiu&&subiu[1]>=3)out.push(`Atenção para <b>${subiu[0]}</b>: ${Math.round(subiu[1])} menções a mais que no período anterior.`);
   }
   if(!P.diario&&c.negN>=5){const w=[0,0,0,0,0,0,0];c.neg.forEach(r=>w[new Date(r.data+'T12:00').getDay()]++);
     const fds=(w[5]+w[6]+w[0])/c.negN; const pior=w.indexOf(Math.max(...w));
@@ -326,7 +333,7 @@ function distTable(el,c){
 function renderComp(P){
   if(S.loja!=='todas'){boxComp.hidden=true;return} boxComp.hidden=false;
   capComp.textContent=`${P.rot} · variação ${P.vs}`;
-  const rows=D.lojas.map(l=>{const c=stats(sel(l.id,P.ini,P.fim)),p=stats(sel(l.id,P.pIni,P.pFim));const t=topTema(c.temas);
+  const rows=D.lojas.map(l=>{const c=stats(sel(l.id,P.ini,P.fim)),cdl=completoDesde(l.id),p=(cdl&&P.pIni<cdl)?stats([]):stats(sel(l.id,P.pIni,P.pFim));const t=topTema(c.temas);
     return `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${COR[l.id]};margin-right:6px"></i>${l.nome}</td><td class="num">${c.n}</td><td class="num">${f1(c.media)}</td><td class="num">${delta(c.media,p.media)}</td><td class="num">${fpct(c.pctNeg)}</td><td>${t?t[0]:'—'}</td></tr>`}).join('');
   comp.innerHTML=`<table><tr><th>Loja</th><th class="num">Avaliações</th><th class="num">Nota média</th><th class="num">Variação</th><th class="num">% abaixo de 4★</th><th>Principal problema</th></tr>${rows}</table>`;
 }
