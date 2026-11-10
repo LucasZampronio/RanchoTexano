@@ -143,7 +143,23 @@ def converter(rv, loja_id):
         texto = (rv.get("extracted_snippet") or {}).get("original") or rv.get("snippet") or ""
         reg["comentario"] = texto.strip()
         reg["respondida"] = bool(rv.get("response"))
+        u = rv.get("user") or {}
+        reg["autor"] = (u.get("name") or "").strip()
+        if u.get("thumbnail"):
+            reg["foto"] = u["thumbnail"]
     return reg
+
+
+def completar(existente, reg):
+    """Atualiza dados de uma avaliação já salva (nome, foto, resposta da loja). Devolve True se mudou."""
+    if existente["nota"] >= 4 or reg["nota"] >= 4:
+        return False
+    mudou = False
+    for campo in ("autor", "foto", "respondida"):
+        if campo in reg and existente.get(campo) != reg[campo]:
+            existente[campo] = reg[campo]
+            mudou = True
+    return mudou
 
 
 def coleta_recentes(loja, chave, por_id, cont, max_paginas, data_inicio):
@@ -160,6 +176,7 @@ def coleta_recentes(loja, chave, por_id, cont, max_paginas, data_inicio):
                 return novas, None
             if reg["id"] in por_id:
                 achou_conhecida = True
+                completar(por_id[reg["id"]], reg)
                 continue
             por_id[reg["id"]] = reg
             novas += 1
@@ -189,6 +206,8 @@ def coleta_historico(loja, chave, por_id, cont, est, data_inicio):
         if reg["id"] not in por_id:
             por_id[reg["id"]] = reg
             novas += 1
+        else:
+            completar(por_id[reg["id"]], reg)
     est["token"] = prox
     est["paginas"] = est.get("paginas", 0) + 1
     if not prox or not revs or passou_inicio:
@@ -196,6 +215,35 @@ def coleta_historico(loja, chave, por_id, cont, est, data_inicio):
         est["token"] = None
         log(f"  histórico de {loja['nome']} completo")
     return novas
+
+
+def coleta_enriquecer(loja, chave, por_id, cont, est):
+    """Uma página para completar nome/foto de avaliações negativas antigas que ainda não têm. Devolve True se buscou."""
+    faltando = [a["data"] for a in por_id.values() if a["loja"] == loja["id"] and a["nota"] < 4 and "autor" not in a]
+    if not faltando:
+        est["enriquecido"] = True
+        est.pop("enr_token", None)
+        return False
+    corte = min(faltando)
+    try:
+        revs, prox = buscar_pagina(loja, chave, est.get("enr_token"), cont)
+    except RuntimeError as e:
+        log(f"  falha ao completar nomes ({e}); recomeça depois")
+        est.pop("enr_token", None)
+        return True
+    menor = None
+    for rv in revs:
+        reg = converter(rv, loja["id"])
+        if not reg:
+            continue
+        menor = reg["data"] if menor is None or reg["data"] < menor else menor
+        if reg["id"] in por_id:
+            completar(por_id[reg["id"]], reg)
+    est["enr_token"] = prox
+    if not prox or not revs or (menor and menor < corte):
+        est.pop("enr_token", None)
+        est["enriquecido"] = not any(a["loja"] == loja["id"] and a["nota"] < 4 and "autor" not in a for a in por_id.values())
+    return True
 
 
 # ---------------- classificação de temas ----------------
@@ -288,9 +336,11 @@ def main():
             # o histórico começa logo depois das páginas recentes já lidas
             est.update({"token": token, "iniciado": True, "completo": token is None})
 
-    # 2. Histórico
+    # 2. Histórico e, depois dele, nome/foto das avaliações antigas
     pendentes = [l for l in lojas if not hist[l["id"]].get("completo") and hist[l["id"]].get("token")]
-    if pendentes:
+    enriquecer = [l for l in lojas if hist[l["id"]].get("completo") and
+                  any(a["loja"] == l["id"] and a["nota"] < 4 and "autor" not in a for a in por_id.values())]
+    if pendentes or enriquecer:
         if modo == "completo":
             limite = 10_000
         else:
@@ -310,6 +360,12 @@ def main():
                 log(f"  {loja['nome']}: +{n} do histórico (página {est.get('paginas')})")
                 if est.get("completo") or not est.get("token"):
                     pendentes.remove(loja)
+        for loja in enriquecer:
+            while feitas < limite and coleta_enriquecer(loja, chave, por_id, cont, hist[loja["id"]]):
+                feitas += 1
+                if hist[loja["id"]].get("enriquecido"):
+                    break
+            log(f"  {loja['nome']}: nomes e fotos {'completos' if hist[loja['id']].get('enriquecido') else 'em andamento'}")
 
     avaliacoes = sorted(por_id.values(), key=lambda a: (a["data"], a["loja"], a["id"]))
     classificar(avaliacoes)
