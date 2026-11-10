@@ -1,0 +1,24 @@
+{
+  "historico": {
+    "capao": {
+      "token": "CjEIARIpCgoAP72GNU4iY5__EhB0i_BT8COoJaMl-8gAAAAAGgn922cCY1TiJjkYACIA",
+      "iniciado": true,
+      "completo": false,
+      "paginas": 7
+    },
+    "ipiranga": {
+      "token": "CjEIARIpCgoAP72F691-2h__EhDDdWUlDMx_s_YOvOEAAAAAGgn92fkCXr3X7aEYACIA",
+      "iniciado": true,
+      "completo": false,
+      "paginas": 7
+    },
+    "novo-hamburgo": {
+      "token": "Ci8IARInCgoAP72F80H0ev__EhD2QafYTOKEHjG9kHYAAAAAGgf_Al80H0evGAAiAA",
+      "iniciado": true,
+      "completo": false,
+      "paginas": 6
+    }
+  },
+  "ultima_execucao": "2026-11-10T12:17:22-03:00",
+  "buscas_ultima_execucao": 35
+}
