@@ -35,7 +35,7 @@ API = "https://serpapi.com/search.json"
 TEMAS = ["Tempo de espera", "Atendimento", "Comida", "Preço", "Ambiente", "Limpeza", "Delivery", "Outros"]
 
 PALAVRAS = {
-    "Tempo de espera": ["demor", "espera", "esperamos", "esperei", "fila", "lento", "minutos", "hora para", "horas"],
+    "Tempo de espera": ["demor", "tempo de espera", "esperamos", "esperei", "esperando", "muito tempo", "fila", "lento", "minutos", "hora para", "horas para"],
     "Atendimento": ["atend", "garçom", "garcom", "garçonete", "grosse", "mal educad", "educação", "simpati", "ignor", "gerente", "funcionári"],
     "Comida": ["comida", "carne", "frio", "fria", "sem sal", "salgad", "cru", "crua", "passad", "sabor", "gosto", "prato", "costela", "batata", "queimad", "sobremesa"],
     "Preço": ["caro", "muito cara", "cara demais", "caríssim", "preço", "preco", "valor", "cobra", "taxa", "porção pequena", "porcao pequena", "conta"],
@@ -236,17 +236,23 @@ def temas_com_claude(itens, chave):
 
 
 def classificar(avaliacoes):
-    pend = [a for a in avaliacoes if a["nota"] < 4 and not a.get("temas")]
+    chave = os.environ.get("ANTHROPIC_API_KEY")
+    # sem temas ainda, ou classificadas por palavras-chave quando agora há chave do Claude
+    pend = [a for a in avaliacoes if a["nota"] < 4 and
+            (not a.get("temas") or (chave and a.get("classif") != "claude" and a.get("comentario")))]
     if not pend:
         return
     log(f"Classificando temas de {len(pend)} avaliações abaixo de 4★")
-    chave = os.environ.get("ANTHROPIC_API_KEY")
     via_claude = {}
     if chave:
         com_texto = [(a["id"], a["nota"], a["comentario"]) for a in pend if a.get("comentario")]
         via_claude = temas_com_claude(com_texto, chave)
     for a in pend:
-        a["temas"] = via_claude.get(a["id"]) or (temas_por_palavra(a["comentario"]) if a.get("comentario") else ["Outros"])
+        if a["id"] in via_claude:
+            a["temas"], a["classif"] = via_claude[a["id"]], "claude"
+        else:
+            a["temas"] = temas_por_palavra(a["comentario"]) if a.get("comentario") else ["Outros"]
+            a["classif"] = "palavras"
 
 
 # ---------------- principal ----------------
