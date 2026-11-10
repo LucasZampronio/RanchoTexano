@@ -1,0 +1,20 @@
+[
+  {
+    "id": "capao",
+    "nome": "Capão da Canoa",
+    "busca": "Rancho Texano Capão da Canoa RS",
+    "data_id": null
+  },
+  {
+    "id": "ipiranga",
+    "nome": "Ipiranga (Porto Alegre)",
+    "busca": "Rancho Texano Ipiranga Porto Alegre RS",
+    "data_id": null
+  },
+  {
+    "id": "novo-hamburgo",
+    "nome": "Novo Hamburgo",
+    "busca": "Rancho Texano Novo Hamburgo RS",
+    "data_id": "0x9519430047c78a33:0xacfea757d8793359"
+  }
+]

@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rancho Texano Avaliações</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --pos:#2a78d6; --neg:#eb6834;
+  --good:#006300; --bad:#d03b3b; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  --chip:#f0efec;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --pos:#3987e5; --neg:#d95926;
+    --good:#0ca30c; --bad:#e66767; --chip:#2c2c2a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --pos:#3987e5; --neg:#d95926;
+  --good:#0ca30c; --bad:#e66767; --chip:#2c2c2a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+h1{font-size:22px;margin:0 0 2px}
+.sub{color:var(--ink2);font-size:13px}
+.aviso{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:6px;background:var(--chip);color:var(--ink2);font-size:12px}
+.filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:10px 12px;margin-bottom:16px;position:sticky;top:0;z-index:5}
+.seg{display:inline-flex;background:var(--chip);border-radius:8px;padding:2px}
+.seg button{border:0;background:transparent;color:var(--ink2);padding:6px 12px;border-radius:6px;font:inherit;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--ring)}
+select,input[type=date]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--ring);border-radius:8px;padding:6px 8px}
+.spacer{flex:1}
+.lbl{color:var(--muted);font-size:12px;margin-right:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:14px 16px}
+.kpi .k{color:var(--ink2);font-size:12px}
+.kpi .v{font-size:28px;font-weight:650;margin-top:2px}
+.kpi .d{font-size:12px;color:var(--muted);margin-top:2px}
+.up-good,.down-good{color:var(--good)} .up-bad,.down-bad{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.full{margin-bottom:12px}
+h2{font-size:15px;margin:0 0 2px}
+.cap{color:var(--muted);font-size:12px;margin-bottom:8px}
+.insights ul{margin:6px 0 0;padding-left:18px}
+.insights li{margin:4px 0}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;overflow:visible}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+#tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--ring);box-shadow:0 4px 16px rgba(0,0,0,.12);border-radius:8px;padding:6px 9px;font-size:12px;display:none;z-index:20;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:500;font-size:12px;border-bottom:1px solid var(--grid);padding:6px 8px}
+td{border-bottom:1px solid var(--grid);padding:7px 8px;font-variant-numeric:tabular-nums}
+td.num,th.num{text-align:right}
+.bar{height:8px;border-radius:4px;background:var(--neg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{border:1px solid var(--ring);background:var(--chip);color:var(--ink2);border-radius:999px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.com{border-top:1px solid var(--grid);padding:10px 0}
+.com:first-child{border-top:0}
+.com .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--ink2)}
+.stars{color:var(--warn);letter-spacing:1px;font-size:13px}
+.stars .off{color:var(--grid)}
+.tag{background:var(--chip);border-radius:6px;padding:1px 7px;font-size:11px;color:var(--ink2)}
+.sev{font-size:11px;font-weight:600}
+.sev.alta{color:var(--crit)} .sev.media{color:var(--ink2)}
+.com p{margin:4px 0 0}
+.mais{margin-top:8px;border:1px solid var(--ring);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer}
+.vazio{color:var(--muted);padding:12px 0}
+@media (max-width:820px){.filtros{position:static}.kpis{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+@media print{.filtros{position:static}.mais{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Rancho Texano · Avaliações no Google</h1>
+      <div class="sub" id="atualizado"></div>
+      <div class="aviso" id="fonte" hidden></div>
+    </div>
+  </header>
+
+  <div class="filtros">
+    <span class="lbl">Loja</span><div class="seg" id="fLoja"></div>
+    <span class="lbl">Relatório</span>
+    <div class="seg" id="fPeriodo">
+      <button data-v="anual">Anual</button><button data-v="mensal">Mensal</button><button data-v="diario">Diário</button>
+    </div>
+    <select id="selAno" aria-label="Ano"></select>
+    <select id="selMes" aria-label="Mês"></select>
+    <input type="date" id="selDia" aria-label="Dia">
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card insights full"><h2>Principais insights</h2><ul id="insights"></ul></div>
+
+  <div id="graficos"></div>
+
+  <div class="card full" id="boxComp"><h2>Comparativo entre lojas</h2><div class="cap" id="capComp"></div><div id="comp"></div></div>
+
+  <div class="card full"><h2>Avaliações abaixo de 4★</h2><div class="cap">Comentários para análise, do mais recente para o mais antigo</div>
+    <div class="chips" id="chipsTema"></div><div id="comentarios"></div></div>
+</div>
+<div id="tip"></div>
+
+<script>
+const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const MESES_L=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const SEMANA=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+let COR={};
+let D, S={loja:'todas',periodo:'mensal',ano:null,mes:null,dia:null,tema:'todos',limite:15};
+
+const f1=x=>x==null||isNaN(x)?'—':x.toFixed(1).replace('.',',');
+const fpct=x=>x==null||isNaN(x)?'—':(x*100).toFixed(0)+'%';
+const fint=x=>x.toLocaleString('pt-BR');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const addDays=(iso,n)=>{const d=new Date(iso+'T12:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+const lastDay=(y,m)=>new Date(y,m,0).getDate();
+const dataBR=iso=>{const[y,m,d]=iso.split('-');return `${d}/${m}/${y}`};
+const nomeLoja=id=>(D.lojas.find(l=>l.id===id)||{}).nome||id;
+
+function sel(loja,ini,fim){return D.avaliacoes.filter(r=>(loja==='todas'||r.loja===loja)&&r.data>=ini&&r.data<=fim)}
+function stats(L){
+  const n=L.length, soma=L.reduce((a,r)=>a+r.nota,0), neg=L.filter(r=>r.nota<4);
+  const dist=[0,0,0,0,0,0]; L.forEach(r=>dist[r.nota]++);
+  const temas={}; neg.forEach(r=>(r.temas||[]).forEach(t=>temas[t]=(temas[t]||0)+1));
+  return {n,media:n?soma/n:null,negN:neg.length,pctNeg:n?neg.length/n:null,dist,temas,neg};
+}
+function periodo(){
+  const maxD=D.max;
+  if(S.periodo==='anual'){
+    const y=S.ano, ini=`${y}-01-01`, fim=`${y}-12-31`;
+    const parcial = maxD<fim;
+    const fimEf = parcial?maxD:fim;
+    const pIni=`${y-1}-01-01`, pFim=parcial?`${y-1}${fimEf.slice(4)}`:`${y-1}-12-31`;
+    return {ini,fim:fimEf,pIni,pFim,rot:`${y}${parcial?' (até '+dataBR(fimEf)+')':''}`,
+      vs:parcial?`vs mesmo período de ${y-1}`:`vs ${y-1}`};
+  }
+  if(S.periodo==='mensal'){
+    const [y,m]=S.mes.split('-').map(Number);
+    const ini=`${y}-${pad(m)}-01`, fim=`${y}-${pad(m)}-${pad(lastDay(y,m))}`;
+    const py=m===1?y-1:y, pm=m===1?12:m-1;
+    return {ini,fim:fim>maxD?maxD:fim,pIni:`${py}-${pad(pm)}-01`,pFim:`${py}-${pad(pm)}-${pad(lastDay(py,pm))}`,
+      rot:`${MESES_L[m-1]} de ${y}`,vs:`vs ${MESES_L[pm-1]}`};
+  }
+  const d=S.dia;
+  return {ini:d,fim:d,pIni:addDays(d,-30),pFim:addDays(d,-1),rot:dataBR(d),vs:'vs média dos 30 dias anteriores',diario:true};
+}
+
+/* ---------- tooltip ---------- */
+const tip=document.getElementById('tip');
+function showTip(e,html){tip.innerHTML=html;tip.style.display='block';
+  const w=tip.offsetWidth,h=tip.offsetHeight;let x=e.clientX+14,y=e.clientY+14;
+  if(x+w>innerWidth-8)x=e.clientX-w-14; if(y+h>innerHeight-8)y=e.clientY-h-14;
+  tip.style.left=x+'px';tip.style.top=y+'px'}
+function hideTip(){tip.style.display='none'}
+
+/* ---------- charts (SVG puro) ---------- */
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const n=v/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p}
+function lineChart(el,{labels,series,yMin,yMax,fmt,ticks}){
+  const W=el.clientWidth||600,H=220,m={l:34,r:12,t:10,b:26},iw=W-m.l-m.r,ih=H-m.t-m.b;
+  const x=i=>m.l+(labels.length===1?iw/2:i*iw/(labels.length-1)), y=v=>m.t+ih-(v-yMin)/(yMax-yMin)*ih;
+  let s=`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img">`;
+  ticks.forEach(t=>{s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${m.l-6}" y="${y(t)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(t)}</text>`});
+  const step=Math.ceil(labels.length/12);
+  labels.forEach((l,i)=>{if(i%step===0)s+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--muted)">${l}</text>`});
+  series.forEach(se=>{let d='',pen=false;se.values.forEach((v,i)=>{if(v==null){pen=false;return}d+=(pen?'L':'M')+x(i)+' '+y(v);pen=true});
+    s+=`<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round"/>`;
+    if(labels.length<=14)se.values.forEach((v,i)=>{if(v!=null)s+=`<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${se.color}" stroke="var(--surface)" stroke-width="2"/>`});});
+  s+=`<line id="cross" y1="${m.t}" y2="${m.t+ih}" stroke="var(--axis)" visibility="hidden"/><rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/></svg>`;
+  el.innerHTML=s;
+  const svg=el.querySelector('svg'),cross=svg.querySelector('#cross'),r=svg.querySelector('rect');
+  r.addEventListener('mousemove',e=>{const b=svg.getBoundingClientRect();const px=(e.clientX-b.left)*W/b.width;
+    const i=Math.max(0,Math.min(labels.length-1,Math.round((px-m.l)/(labels.length===1?1:iw/(labels.length-1)))));
+    cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('visibility','visible');
+    showTip(e,`<b>${labels[i]}</b><br>`+series.map(se=>`<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${se.color};margin-right:5px"></i>${se.name}: <b>${fmt(se.values[i])}</b>`).join('<br>'))});
+  r.addEventListener('mouseleave',()=>{cross.setAttribute('visibility','hidden');hideTip()});
+}
+function stackBar(el,{labels,series,tipLabel}){
+  const W=el.clientWidth||600,H=220,m={l:34,r:8,t:10,b:26},iw=W-m.l-m.r,ih=H-m.t-m.b;
+  const tot=labels.map((_,i)=>series.reduce((a,s)=>a+s.values[i],0)); const yMax=niceMax(Math.max(...tot,1));
+  const bw=iw/labels.length, gap=Math.max(2,bw*0.2), y=v=>ih*v/yMax;
+  let s=`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img">`;
+  [0,yMax/2,yMax].forEach(t=>{const yy=m.t+ih-y(t);s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="var(--grid)"/><text x="${m.l-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(t)}</text>`});
+  const step=Math.ceil(labels.length/12);
+  labels.forEach((l,i)=>{let base=m.t+ih;const x0=m.l+i*bw+gap/2,w=bw-gap;
+    series.forEach((se,k)=>{const h=y(se.values[i]);if(h<=0)return;const top=k===series.length-1||series.slice(k+1).every(s2=>s2.values[i]===0);
+      const yy=base-h;const rr=top?Math.min(4,w/2,h):0;
+      s+=top?`<path d="M${x0} ${base}V${yy+rr}Q${x0} ${yy} ${x0+rr} ${yy}H${x0+w-rr}Q${x0+w} ${yy} ${x0+w} ${yy+rr}V${base}Z" fill="${se.color}"/>`
+            :`<rect x="${x0}" y="${yy}" width="${w}" height="${h}" fill="${se.color}"/>`;
+      base=yy-(top?0:2); });
+    if(i%step===0)s+=`<text x="${x0+w/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--muted)">${l}</text>`;
+    s+=`<rect class="hit" data-i="${i}" x="${m.l+i*bw}" y="${m.t}" width="${bw}" height="${ih}" fill="transparent"/>`;});
+  s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}" stroke="var(--axis)"/></svg>`;
+  el.innerHTML=s;
+  el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;
+    h.addEventListener('mousemove',e=>showTip(e,`<b>${tipLabel?tipLabel(i):labels[i]}</b><br>`+series.map(se=>`<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${se.color};margin-right:5px"></i>${se.name}: <b>${se.values[i]}</b>`).join('<br>')+`<br>Total: <b>${tot[i]}</b>`));
+    h.addEventListener('mouseleave',hideTip)});
+}
+function legenda(items){return `<div class="legend">${items.map(([n,c])=>`<span><i style="background:${c}"></i>${n}</span>`).join('')}</div>`}
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll('#fLoja button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.loja));
+  document.querySelectorAll('#fPeriodo button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.periodo));
+  selAno.hidden=S.periodo!=='anual'; selMes.hidden=S.periodo!=='mensal'; selDia.hidden=S.periodo!=='diario';
+  const P=periodo(), L=sel(S.loja,P.ini,P.fim), Lp=sel(S.loja,P.pIni,P.pFim), c=stats(L), p=stats(Lp);
+  renderKpis(c,p,P); renderInsights(c,p,P,L); renderGraficos(P,L,c,p); renderComp(P); renderComentarios(c.neg);
+}
+function delta(cur,prev,{pct=false,bomQuandoSobe=true,diario=false,n=0}={}){
+  if(cur==null||prev==null)return `<span>sem base de comparação</span>`;
+  const d=cur-prev; if(Math.abs(d)<(pct?0.005:0.05))return `<span>estável</span>`;
+  const sobe=d>0, bom=sobe===bomQuandoSobe, seta=sobe?'▲':'▼';
+  const txt=pct?`${seta} ${Math.abs(d*100).toFixed(0)} p.p.`:`${seta} ${f1(Math.abs(d))}`;
+  return `<span class="${bom?'up-good':'up-bad'}">${txt}</span>`;
+}
+function renderKpis(c,p,P){
+  const diasAnt=P.diario?30:1;
+  const volPrev=P.diario?(p.n/30):p.n;
+  const volTxt=P.diario?`média de ${f1(volPrev)}/dia`:(p.n?`${c.n>=p.n?'▲':'▼'} ${Math.abs(Math.round((c.n/p.n-1)*100))}%`:'');
+  kpis.innerHTML=`
+   <div class="card kpi"><div class="k">Avaliações · ${P.rot}</div><div class="v">${fint(c.n)}</div><div class="d">${volTxt} ${P.vs}</div></div>
+   <div class="card kpi"><div class="k">Nota média</div><div class="v">${f1(c.media)} <span style="font-size:18px;color:var(--warn)">★</span></div><div class="d">${delta(c.media,p.media)} ${P.vs}</div></div>
+   <div class="card kpi"><div class="k">% abaixo de 4★</div><div class="v">${fpct(c.pctNeg)}</div><div class="d">${delta(c.pctNeg,p.pctNeg,{pct:true,bomQuandoSobe:false})} ${P.vs}</div></div>
+   <div class="card kpi"><div class="k">Avaliações abaixo de 4★</div><div class="v">${fint(c.negN)}</div><div class="d">${c.neg.filter(r=>r.nota<=2).length} com 1 ou 2★</div></div>`;
+}
+function topTema(t){const e=Object.entries(t).sort((a,b)=>b[1]-a[1]);return e[0]||null}
+function renderInsights(c,p,P,L){
+  const out=[];
+  if(!c.n){insights.innerHTML='<li>Nenhuma avaliação registrada neste período.</li>';return}
+  if(c.media!=null&&p.media!=null){const d=c.media-p.media;
+    out.push(Math.abs(d)<0.05?`Nota média estável em <b>${f1(c.media)}</b> (${P.vs}).`
+      :`Nota média ${d>0?'subiu':'caiu'} para <b>${f1(c.media)}</b>, ${d>0?'+':'−'}${f1(Math.abs(d))} ${P.vs}.`)}
+  const tt=topTema(c.temas);
+  if(tt){const share=tt[1]/c.negN, prevN=p.temas[tt[0]]||0;
+    let var_='';
+    if(!P.diario&&prevN){const v=(tt[1]/prevN-1);var_=Math.abs(v)>=0.15?`, ${v>0?'alta':'queda'} de ${Math.abs(Math.round(v*100))}% em menções ${P.vs}`:''}
+    out.push(`<b>${tt[0]}</b> é o principal motivo das notas baixas: aparece em ${fpct(share)} das avaliações abaixo de 4★${var_}.`);
+    const subiu=Object.keys(c.temas).map(t=>[t,c.temas[t]-(p.temas[t]||0)*(P.diario?1/30:1)]).filter(([t])=>t!==tt[0]).sort((a,b)=>b[1]-a[1])[0];
+    if(!P.diario&&subiu&&subiu[1]>=3)out.push(`Atenção para <b>${subiu[0]}</b>: ${Math.round(subiu[1])} menções a mais que no período anterior.`);
+  }
+  if(!P.diario&&c.negN>=5){const w=[0,0,0,0,0,0,0];c.neg.forEach(r=>w[new Date(r.data+'T12:00').getDay()]++);
+    const fds=(w[5]+w[6]+w[0])/c.negN; const pior=w.indexOf(Math.max(...w));
+    out.push(fds>=0.55?`${fpct(fds)} das avaliações negativas são de sexta a domingo; o pico é ${SEMANA[pior].toLowerCase()}.`
+      :`O dia com mais avaliações negativas é ${SEMANA[pior].toLowerCase()} (${w[pior]} de ${c.negN}).`)}
+  if(S.loja==='todas'&&!P.diario){const por=D.lojas.map(l=>{const s=stats(L.filter(r=>r.loja===l.id));return {l,s}}).filter(x=>x.s.n);
+    if(por.length>1){por.sort((a,b)=>b.s.pctNeg-a.s.pctNeg);const w=por[0],b=por[por.length-1];const tw=topTema(w.s.temas);
+      out.push(`<b>${w.l.nome}</b> tem a maior taxa de notas baixas (${fpct(w.s.pctNeg)})${tw?', puxada por '+tw[0].toLowerCase():''}; <b>${b.l.nome}</b> tem a menor (${fpct(b.s.pctNeg)}).`)}}
+  if(P.diario){const g=c.neg.filter(r=>r.nota<=2).length;
+    out.unshift(c.negN?`${c.negN} avaliação${c.negN>1?'ões':''} abaixo de 4★ no dia${g?`, sendo ${g} de 1 ou 2★ (gravidade alta)`:''}.`:`Nenhuma avaliação abaixo de 4★ neste dia.`)}
+  insights.innerHTML=out.map(t=>`<li>${t}</li>`).join('');
+}
+function renderGraficos(P,L,c,p){
+  const lojas=S.loja==='todas'?D.lojas.map(l=>l.id):[S.loja];
+  let h='';
+  if(P.diario){
+    h=`<div class="grid2"><div class="card"><h2>Distribuição de estrelas no dia</h2><div class="cap">${dataBR(S.dia)}</div><div id="gDist"></div></div>
+       <div class="card"><h2>Temas das avaliações abaixo de 4★</h2><div class="cap">${P.rot}</div><div id="gTemas"></div></div></div>`;
+    graficos.innerHTML=h; distTable(gDist,c); temasTable(gTemas,c,p,true); return;
+  }
+  if(S.periodo==='anual'){
+    h=`<div class="grid2"><div class="card"><h2>Nota média por mês</h2><div class="cap">${P.rot}</div>${lojas.length>1?legenda(lojas.map(id=>[nomeLoja(id),COR[id]])):''}<div class="chart" id="gNota"></div></div>
+       <div class="card"><h2>Avaliações por mês</h2><div class="cap">Separadas entre 4★ ou mais e abaixo de 4★</div>${legenda([['4★ ou mais','var(--pos)'],['Abaixo de 4★','var(--neg)']])}<div class="chart" id="gVol"></div></div></div>`;
+  } else {
+    h=`<div class="grid2"><div class="card"><h2>Avaliações por dia</h2><div class="cap">${P.rot}</div>${legenda([['4★ ou mais','var(--pos)'],['Abaixo de 4★','var(--neg)']])}<div class="chart" id="gVol"></div></div>
+       <div class="card"><h2>Nota média: últimos 12 meses</h2><div class="cap">Contexto para o mês selecionado</div>${lojas.length>1?legenda(lojas.map(id=>[nomeLoja(id),COR[id]])):''}<div class="chart" id="gNota"></div></div></div>`;
+  }
+  h+=`<div class="grid2"><div class="card"><h2>Temas das avaliações abaixo de 4★</h2><div class="cap">Quantas vezes cada tema foi citado, ${P.vs}</div><div id="gTemas"></div></div>
+      <div class="card"><h2>Avaliações abaixo de 4★ por dia da semana</h2><div class="cap">${P.rot}</div><div class="chart" id="gSemana"></div></div></div>`;
+  graficos.innerHTML=h;
+  // nota por mês
+  let meses=[];
+  if(S.periodo==='anual'){const ult=+P.fim.slice(5,7);for(let m=1;m<=ult;m++)meses.push(`${S.ano}-${pad(m)}`)}
+  else{let [y,m]=S.mes.split('-').map(Number);for(let k=11;k>=0;k--){let mm=m-k,yy=y;while(mm<1){mm+=12;yy--}meses.push(`${yy}-${pad(mm)}`)}meses=meses.filter(x=>x>=D.min.slice(0,7))}
+  const labM=meses.map(x=>MESES[+x.slice(5)-1]+(S.periodo==='anual'?'':'/'+x.slice(2,4)));
+  const ser=lojas.map(id=>({name:nomeLoja(id),color:COR[id],values:meses.map(mm=>stats(sel(id,mm+'-01',mm+'-31')).media)}));
+  const all=ser.flatMap(s=>s.values).filter(v=>v!=null);const lo=Math.max(1,Math.floor((Math.min(...all)-0.1)*2)/2),hi=5;
+  const tk=[];for(let t=lo;t<=hi+1e-9;t+=0.5)tk.push(t);
+  lineChart(gNota,{labels:labM,series:ser,yMin:lo,yMax:hi,fmt:f1,ticks:tk});
+  // volume
+  if(S.periodo==='anual'){
+    stackBar(gVol,{labels:meses.map(x=>MESES[+x.slice(5)-1]),series:[
+      {name:'4★ ou mais',color:'var(--pos)',values:meses.map(mm=>L.filter(r=>r.data.startsWith(mm)&&r.nota>=4).length)},
+      {name:'Abaixo de 4★',color:'var(--neg)',values:meses.map(mm=>L.filter(r=>r.data.startsWith(mm)&&r.nota<4).length)}],
+      tipLabel:i=>MESES_L[+meses[i].slice(5)-1]});
+  } else {
+    const [y,m]=S.mes.split('-').map(Number);const nd=lastDay(y,m);const dias=[];for(let d=1;d<=nd;d++)dias.push(`${S.mes}-${pad(d)}`);
+    stackBar(gVol,{labels:dias.map(d=>String(+d.slice(8))),series:[
+      {name:'4★ ou mais',color:'var(--pos)',values:dias.map(d=>L.filter(r=>r.data===d&&r.nota>=4).length)},
+      {name:'Abaixo de 4★',color:'var(--neg)',values:dias.map(d=>L.filter(r=>r.data===d&&r.nota<4).length)}],
+      tipLabel:i=>`${SEMANA[new Date(dias[i]+'T12:00').getDay()]}, ${dataBR(dias[i])}`});
+  }
+  temasTable(gTemas,c,p,false);
+  const w=[0,0,0,0,0,0,0];c.neg.forEach(r=>w[new Date(r.data+'T12:00').getDay()]++);
+  const ord=[1,2,3,4,5,6,0];
+  stackBar(gSemana,{labels:ord.map(i=>SEMANA[i]),series:[{name:'Abaixo de 4★',color:'var(--neg)',values:ord.map(i=>w[i])}]});
+}
+function temasTable(el,c,p,diario){
+  const e=Object.entries(c.temas).sort((a,b)=>b[1]-a[1]);
+  if(!e.length){el.innerHTML='<div class="vazio">Nenhum tema neste período.</div>';return}
+  const mx=e[0][1];
+  el.innerHTML=`<table><tr><th>Tema</th><th></th><th class="num">Menções</th><th class="num">% das negativas</th>${diario?'':'<th class="num">Anterior</th>'}</tr>`+
+   e.map(([t,n])=>{const pv=p.temas[t]||0;const cls=n>pv?'up-bad':n<pv?'down-good':'';
+     return `<tr><td>${t}</td><td style="width:30%"><div class="bar" style="width:${n/mx*100}%"></div></td><td class="num">${n}</td><td class="num">${fpct(n/c.negN)}</td>${diario?'':`<td class="num ${cls}">${pv}</td>`}</tr>`}).join('')+`</table>`;
+}
+function distTable(el,c){
+  const mx=Math.max(...c.dist.slice(1),1);
+  el.innerHTML=`<table>${[5,4,3,2,1].map(k=>`<tr><td style="width:40px">${k}★</td><td><div class="bar" style="background:${k>=4?'var(--pos)':'var(--neg)'};width:${c.dist[k]/mx*100}%"></div></td><td class="num" style="width:40px">${c.dist[k]}</td></tr>`).join('')}</table>`;
+}
+function renderComp(P){
+  if(S.loja!=='todas'){boxComp.hidden=true;return} boxComp.hidden=false;
+  capComp.textContent=`${P.rot} · variação ${P.vs}`;
+  const rows=D.lojas.map(l=>{const c=stats(sel(l.id,P.ini,P.fim)),p=stats(sel(l.id,P.pIni,P.pFim));const t=topTema(c.temas);
+    return `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${COR[l.id]};margin-right:6px"></i>${l.nome}</td><td class="num">${c.n}</td><td class="num">${f1(c.media)}</td><td class="num">${delta(c.media,p.media)}</td><td class="num">${fpct(c.pctNeg)}</td><td>${t?t[0]:'—'}</td></tr>`}).join('');
+  comp.innerHTML=`<table><tr><th>Loja</th><th class="num">Avaliações</th><th class="num">Nota média</th><th class="num">Variação</th><th class="num">% abaixo de 4★</th><th>Principal problema</th></tr>${rows}</table>`;
+}
+function renderComentarios(neg){
+  const temas=[...new Set(neg.flatMap(r=>r.temas||[]))].sort();
+  if(S.tema!=='todos'&&!temas.includes(S.tema))S.tema='todos';
+  chipsTema.innerHTML=[`<button class="chip" data-t="todos" aria-pressed="${S.tema==='todos'}">Todos (${neg.length})</button>`]
+    .concat(temas.map(t=>`<button class="chip" data-t="${esc(t)}" aria-pressed="${S.tema===t}">${esc(t)} (${neg.filter(r=>(r.temas||[]).includes(t)).length})</button>`)).join('');
+  chipsTema.querySelectorAll('button').forEach(b=>b.onclick=()=>{S.tema=b.dataset.t;S.limite=15;renderComentarios(neg)});
+  const lista=neg.filter(r=>S.tema==='todos'||(r.temas||[]).includes(S.tema)).sort((a,b)=>b.data.localeCompare(a.data)||a.nota-b.nota);
+  if(!lista.length){comentarios.innerHTML='<div class="vazio">Nenhuma avaliação abaixo de 4★ neste período.</div>';return}
+  comentarios.innerHTML=lista.slice(0,S.limite).map(r=>{const alta=r.nota<=2;
+    return `<div class="com"><div class="meta"><span class="stars" aria-label="${r.nota} estrelas">${'★'.repeat(r.nota)}<span class="off">${'★'.repeat(5-r.nota)}</span></span>
+      <span>${esc(nomeLoja(r.loja))}</span><span>${dataBR(r.data)}</span>${r.respondida===false?'<span class="tag">Sem resposta da loja</span>':''}${(r.temas||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}
+      <span class="sev ${alta?'alta':'media'}">${alta?'▲ Gravidade alta':'● Gravidade média'}</span></div><p>${esc(r.comentario||'(sem comentário)')}</p></div>`}).join('')+
+    (lista.length>S.limite?`<button class="mais" id="btnMais">Mostrar mais (${lista.length-S.limite} restantes)</button>`:'');
+  const bm=document.getElementById('btnMais'); if(bm)bm.onclick=()=>{S.limite+=30;renderComentarios(neg)};
+}
+
+/* ---------- init ---------- */
+async function carregar(){
+  if(window.DADOS)return window.DADOS;
+  const r=await fetch('dados.json',{cache:'no-store'});return r.json();
+}
+carregar().then(dados=>{
+  D=dados; D.lojas.forEach((l,i)=>COR[l.id]=`var(--s${i%3+1})`);
+  if(!D.avaliacoes||!D.avaliacoes.length){document.querySelector('.filtros').hidden=true;['kpis','graficos'].forEach(id=>document.getElementById(id).innerHTML='');document.querySelectorAll('.card').forEach(c=>c.hidden=true);document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card"><h2>Aguardando a primeira coleta</h2><p class="sub">Rode a Action "Atualizar avaliações" no modo completo para carregar o histórico.</p></div>');atualizado.textContent='Lojas: '+D.lojas.map(l=>l.nome).join(', ');return}
+  const datas=D.avaliacoes.map(r=>r.data).sort(); D.min=datas[0]; D.max=datas[datas.length-1];
+  atualizado.textContent=`${D.lojas.map(l=>l.nome).join(' · ')} — atualizado em ${new Date(D.atualizado_em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · dados até ${dataBR(D.max)}`;
+  if(D.fonte){fonte.hidden=false;fonte.textContent=D.fonte}
+  fLoja.innerHTML=`<button data-v="todas">Todas</button>`+D.lojas.map(l=>`<button data-v="${l.id}">${esc(l.nome)}</button>`).join('');
+  const anos=[...new Set(datas.map(d=>+d.slice(0,4)))].sort((a,b)=>b-a);
+  selAno.innerHTML=anos.map(a=>`<option>${a}</option>`).join('');
+  const meses=[...new Set(datas.map(d=>d.slice(0,7)))].sort().reverse();
+  selMes.innerHTML=meses.map(m=>`<option value="${m}">${MESES_L[+m.slice(5)-1]} de ${m.slice(0,4)}</option>`).join('');
+  selDia.min=D.min; selDia.max=D.max;
+  S.ano=anos[0]; S.dia=D.max;
+  // mês padrão: último mês completo
+  S.mes = D.max.slice(8)===String(lastDay(+D.max.slice(0,4),+D.max.slice(5,7))) ? meses[0] : (meses[1]||meses[0]);
+  selMes.value=S.mes; selDia.value=S.dia;
+  fLoja.onclick=e=>{const b=e.target.closest('button');if(b){S.loja=b.dataset.v;S.limite=15;render()}};
+  fPeriodo.onclick=e=>{const b=e.target.closest('button');if(b){S.periodo=b.dataset.v;S.limite=15;render()}};
+  selAno.onchange=()=>{S.ano=+selAno.value;render()}; selMes.onchange=()=>{S.mes=selMes.value;render()};
+  selDia.onchange=()=>{if(selDia.value){S.dia=selDia.value;render()}};
+  let t;addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(render,150)});
+  render();
+}).catch(e=>{document.querySelector('.wrap').insertAdjacentHTML('beforeend',`<div class="card">Não foi possível carregar dados.json (${esc(e.message)}). Abra pelo GitHub Pages ou por um servidor local.</div>`)});
+</script>
+</body>
+</html>

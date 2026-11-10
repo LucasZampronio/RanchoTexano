@@ -1,0 +1,54 @@
+name: Atualizar avaliações
+
+on:
+  schedule:
+    - cron: "0 10 * * *"   # todo dia às 7h (horário de Brasília)
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "diario = só as novas | completo = busca o histórico"
+        type: choice
+        options: [diario, completo]
+        default: diario
+      data_inicio:
+        description: "Só no modo completo: buscar até esta data (AAAA-MM-DD). Vazio = histórico todo"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atualizar-avaliacoes
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Coletar avaliações e classificar temas
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODO: ${{ github.event.inputs.modo || 'diario' }}
+          DATA_INICIO: ${{ github.event.inputs.data_inicio }}
+        run: python scripts/coletar.py
+
+      - name: Salvar no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados.json lojas.json
+          if git diff --cached --quiet; then
+            echo "Nada mudou."
+          else
+            git commit -m "Atualiza avaliações ($(TZ=America/Sao_Paulo date +%d/%m/%Y))"
+            git push
+          fi
