@@ -87,6 +87,19 @@ button{font:inherit}
 .seg button[aria-pressed="true"]{background:var(--ativo-bg);color:var(--ativo-ink);font-weight:600}
 select,input[type=date]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:6px 10px;max-width:100%}
 .lbl{color:var(--muted);font-size:12px;flex:none;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.dist{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 32px;align-items:center}
+.dist-resumo{text-align:center;padding:4px 12px}
+.dist-nota{font-family:"Bitter",Georgia,serif;font-size:52px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.dist-estrelas{color:var(--estrela);font-size:18px;letter-spacing:2px;margin:6px 0 2px;position:relative;display:inline-block}
+.dist-estrelas .base{color:var(--grid)}
+.dist-estrelas .cheia{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap}
+.dist-total{color:var(--muted);font-size:12px}
+.dist-linhas{display:grid;gap:7px}
+.dist-linha{display:grid;grid-template-columns:28px minmax(0,1fr) 44px 40px;gap:10px;align-items:center;font-size:13px;font-variant-numeric:tabular-nums}
+.dist-linha .trilha{height:10px;border-radius:5px;background:var(--chip);overflow:hidden}
+.dist-linha .preench{height:100%;border-radius:5px}
+.dist-linha .qt{text-align:right;color:var(--ink2)}
+.dist-linha .pc{text-align:right;color:var(--muted);font-size:12px}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
 .card{background:var(--surface);border:1px solid var(--ring);box-shadow:var(--shadow);border-radius:14px;padding:16px 18px;min-width:0}
 .kpi .k{color:var(--ink2);font-size:12px;font-weight:600}
@@ -147,7 +160,13 @@ td.num,th.num{text-align:right;white-space:nowrap}
   .wrap{padding:14px 12px 40px}
   .card{padding:14px}
   .kpi .v{font-size:25px}
-  .fg{width:100%;flex-wrap:wrap}
+  .fg{width:100%;flex-direction:column;align-items:stretch;gap:6px}
+  .seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+  #fPeriodo{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .seg button{white-space:normal;padding:8px 6px;text-align:center}
+  select,input[type=date]{width:100%;padding:8px 10px}
+  .dist{grid-template-columns:minmax(0,1fr);gap:14px}
+  .dist-nota{font-size:44px}
   .hide-sm{display:none}
   td,th{padding:6px 5px}
   .topo .tit{display:none}
@@ -185,6 +204,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
       </div>
     </div>
 
+    <div class="card full"><h2>Distribuição das estrelas</h2><div class="cap" id="capDist"></div><div class="dist" id="dist"></div></div>
     <div class="kpis" id="kpis"></div>
 
     <div class="card full">
@@ -275,7 +295,7 @@ function hover(el,fn,leave){['pointermove','pointerdown'].forEach(ev=>el.addEven
 const dot=c=>`<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};margin-right:5px"></i>`;
 
 /* ---------- gráficos (SVG puro) ---------- */
-function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const n=v/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p}
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const n=v/p;return [1,1.2,1.5,2,2.5,3,4,5,6,8,10].find(k=>k>=n-1e-9)*p}
 function lineChart(el,{labels,series,yMin,yMax,fmt,ticks,totais}){
   const W=el.clientWidth||600,H=totais?236:220,m={l:32,r:12,t:10,b:totais?42:26},iw=W-m.l-m.r,ih=H-m.t-m.b;
   const x=i=>m.l+(labels.length===1?iw/2:i*iw/(labels.length-1)), y=v=>m.t+ih-(v-yMin)/(yMax-yMin)*ih;
@@ -296,6 +316,23 @@ function lineChart(el,{labels,series,yMin,yMax,fmt,ticks,totais}){
     cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('visibility','visible');
     showTip(e,`<b>${labels[i]}</b><br>`+series.map(se=>`${dot(se.color)}${esc(se.name)}: <b>${fmt(se.values[i])}</b>${se.n?` <span style="color:var(--muted)">(${plural(se.n[i]||0,'avaliação','avaliações')})</span>`:''}`).join('<br>'))},
     ()=>cross.setAttribute('visibility','hidden'));
+}
+function groupBar(el,{labels,series,tipLabel,sufixo=''}){
+  const W=el.clientWidth||600,H=220,m={l:32,r:8,t:10,b:26},iw=W-m.l-m.r,ih=H-m.t-m.b;
+  const yMax=niceMax(Math.max(1,...series.flatMap(s=>s.values))), y=v=>ih*v/yMax, n=series.length;
+  const bw=iw/labels.length, gap=Math.max(2,Math.min(10,bw*0.25)), inner=Math.max(1,(bw-gap)/n);
+  let s=`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img">`;
+  [0,yMax/2,yMax].forEach(t=>{const yy=m.t+ih-y(t);s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="var(--grid)"/><text x="${m.l-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(t)}${sufixo}</text>`});
+  const step=Math.ceil(labels.length/(W<500?8:16));
+  labels.forEach((l,i)=>{const x0=m.l+i*bw+gap/2;
+    series.forEach((se,k)=>{const h=y(se.values[i]);if(h<=0)return;const x=x0+k*inner,w=Math.max(1,inner-(n>1?1:0)),r=Math.min(3,w/2,h),yy=m.t+ih-h,b=m.t+ih;
+      s+=`<path d="M${x} ${b}V${yy+r}Q${x} ${yy} ${x+r} ${yy}H${x+w-r}Q${x+w} ${yy} ${x+w} ${yy+r}V${b}Z" fill="${se.color}"/>`});
+    if(i%step===0)s+=`<text x="${m.l+i*bw+bw/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--muted)">${l}</text>`;
+    s+=`<rect class="hit" data-i="${i}" x="${m.l+i*bw}" y="${m.t}" width="${bw}" height="${ih}" fill="transparent"/>`;});
+  s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}" stroke="var(--axis)"/></svg>`;
+  el.innerHTML=s;
+  el.querySelectorAll('.hit').forEach(hh=>{const i=+hh.dataset.i;
+    hover(hh,e=>showTip(e,`<b>${tipLabel?tipLabel(i):labels[i]}</b><br>`+series.map(se=>`${dot(se.color)}${se.name}: <b>${se.values[i]}${sufixo}</b>`).join('<br>')))});
 }
 function stackBar(el,{labels,series,tipLabel}){
   const W=el.clientWidth||600,H=220,m={l:32,r:8,t:10,b:26},iw=W-m.l-m.r,ih=H-m.t-m.b;
@@ -327,7 +364,7 @@ function render(){
   const P=periodo(), L=sel(S.loja,P.ini,P.fim), c=stats(L), cd=completoDesde(S.loja);
   P.incompleto=!!(cd&&P.ini<cd); P.semBase=!!(cd&&P.pIni<cd);
   const p=P.semBase?stats([]):stats(sel(S.loja,P.pIni,P.pFim));
-  renderKpis(c,p,P); renderAnalise(c,p,P,L); renderGraficos(P,L,c,p); renderComp(P); renderComentarios(c.neg);
+  renderDist(c,P); renderKpis(c,p,P); renderAnalise(c,p,P,L); renderGraficos(P,L,c,p); renderComp(P); renderComentarios(c.neg);
 }
 function varTxt(cur,prev,{pct=false,bomQuandoSobe=true}={}){
   if(cur==null||prev==null)return '';
@@ -404,9 +441,8 @@ function diagEl(d,a){diag.innerHTML=d.map(t=>`<li>${t}</li>`).join('');acoes.inn
 function renderGraficos(P,L,c,p){
   const lojas=S.loja==='todas'?D.lojas.map(l=>l.id):[S.loja];
   if(P.diario){
-    graficos.innerHTML=`<div class="grid2"><div class="card"><h2>Distribuição de estrelas</h2><div class="cap">${P.rot}</div><div class="tw" id="gDist"></div></div>
-       <div class="card"><h2>Temas das notas baixas</h2><div class="cap">${P.rot}</div><div class="tw" id="gTemas"></div></div></div>`;
-    distTable(gDist,c); temasTable(gTemas,c,p,true); return;
+    graficos.innerHTML=`<div class="card full"><h2>Temas das notas baixas</h2><div class="cap">${P.rot}</div><div class="tw" id="gTemas"></div></div>`;
+    temasTable(gTemas,c,p,true); return;
   }
   const leg=lojas.length>1?legenda(lojas.map(id=>[nomeLoja(id),COR[id]])):'';
   const legVol=legenda([['4★ ou mais','var(--pos)'],['Abaixo de 4★','var(--neg)']]);
@@ -431,13 +467,13 @@ function renderGraficos(P,L,c,p){
   lineChart(gNota,{labels:labM,series:ser,yMin:lo,yMax:hi,fmt:f1,ticks:tk,totais});
 
   if(S.periodo==='anual'){
-    stackBar(gVol,{labels:meses.map(x=>MESES[+x.slice(5)-1]),series:[
+    groupBar(gVol,{labels:meses.map(x=>MESES[+x.slice(5)-1]),series:[
       {name:'4★ ou mais',color:'var(--pos)',values:meses.map(mm=>L.filter(r=>r.data.startsWith(mm)&&r.nota>=4).length)},
       {name:'Abaixo de 4★',color:'var(--neg)',values:meses.map(mm=>L.filter(r=>r.data.startsWith(mm)&&r.nota<4).length)}],
       tipLabel:i=>MESES_L[+meses[i].slice(5)-1]});
   } else {
     const [y,m]=S.mes.split('-').map(Number), dias=[];for(let d=1;d<=lastDay(y,m);d++)dias.push(`${S.mes}-${pad(d)}`);
-    stackBar(gVol,{labels:dias.map(d=>String(+d.slice(8))),series:[
+    groupBar(gVol,{labels:dias.map(d=>String(+d.slice(8))),series:[
       {name:'4★ ou mais',color:'var(--pos)',values:dias.map(d=>L.filter(r=>r.data===d&&r.nota>=4).length)},
       {name:'Abaixo de 4★',color:'var(--neg)',values:dias.map(d=>L.filter(r=>r.data===d&&r.nota<4).length)}],
       tipLabel:i=>`${SEM_C[dow(dias[i])]}, ${dataBR(dias[i])}`});
@@ -445,8 +481,8 @@ function renderGraficos(P,L,c,p){
   temasTable(gTemas,c,p,false);
   const tot=Array(7).fill(0),neg=Array(7).fill(0);L.forEach(r=>{const w=dow(r.data);tot[w]++;if(r.nota<4)neg[w]++});
   const ord=[1,2,3,4,5,6,0];
-  stackBar(gSemana,{labels:ord.map(i=>SEM_C[i]),series:[{name:'Abaixo de 4★',color:'var(--neg)',values:ord.map(i=>tot[i]?Math.round(neg[i]/tot[i]*100):0)}],
-    tipLabel:i=>`${SEMANA[ord[i]]}: ${neg[ord[i]]} de ${tot[ord[i]]} avaliações (%)`});
+  groupBar(gSemana,{labels:ord.map(i=>SEM_C[i]),sufixo:'%',series:[{name:'Abaixo de 4★',color:'var(--neg)',values:ord.map(i=>tot[i]?Math.round(neg[i]/tot[i]*100):0)}],
+    tipLabel:i=>`${SEMANA[ord[i]][0].toUpperCase()+SEMANA[ord[i]].slice(1)}: ${neg[ord[i]]} de ${tot[ord[i]]} avaliações`});
 }
 function temasTable(el,c,p,diario){
   const e=Object.entries(c.temas).sort((a,b)=>(c.perda[b[0]]||0)-(c.perda[a[0]]||0));
@@ -455,6 +491,16 @@ function temasTable(el,c,p,diario){
   el.innerHTML=`<table><tr><th>Tema</th><th class="hide-sm"></th><th class="num hide-sm">Menções</th><th class="num">% das notas baixas</th><th class="num">Tira da nota</th>${comp?'<th class="num hide-sm">Antes</th>':''}</tr>`+
    e.map(([t,n])=>{const pv=p.temas[t]||0;
      return `<tr><td>${t}</td><td class="hide-sm" style="width:22%"><div class="bar" style="width:${(c.perda[t]||0)/mx*100}%"></div></td><td class="num hide-sm">${n}</td><td class="num">${fpct(n/c.negN)}</td><td class="num">${f2(c.perda[t])}</td>${comp?`<td class="num hide-sm">${pv}</td>`:''}</tr>`}).join('')+`</table>`;
+}
+function renderDist(c,P){
+  capDist.textContent=`${S.loja==='todas'?'Todas as lojas':nomeLoja(S.loja)} · ${P.rot}`;
+  if(!c.n){dist.innerHTML='<div class="vazio">Nenhuma avaliação neste período.</div>';return}
+  const pct=c.media/5*100;
+  dist.innerHTML=`<div class="dist-resumo"><div class="dist-nota">${f1(c.media)}</div>
+    <div class="dist-estrelas" aria-label="${f1(c.media)} de 5 estrelas"><span class="base">★★★★★</span><span class="cheia" style="width:${pct}%">★★★★★</span></div>
+    <div class="dist-total">${plural(c.n,'avaliação','avaliações')}</div></div>
+    <div class="dist-linhas">${[5,4,3,2,1].map(k=>{const q=c.dist[k],f=q/c.n;
+      return `<div class="dist-linha"><span>${k}★</span><div class="trilha"><div class="preench" style="width:${f*100}%;background:${k>=4?'var(--pos)':'var(--neg)'}"></div></div><span class="qt">${fint(q)}</span><span class="pc">${fpct(f)}</span></div>`}).join('')}</div>`;
 }
 function distTable(el,c){
   const mx=Math.max(...c.dist.slice(1),1);
