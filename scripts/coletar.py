@@ -99,9 +99,9 @@ def coletar_loja(loja, chave, conhecidos, modo, max_paginas, data_inicio):
                 break
             if rid in conhecidos:
                 seguidas_conhecidas += 1
-                if modo == "diario" and seguidas_conhecidas >= 10:
+                # no modo diário, achar uma já salva basta: dali para trás está tudo coletado
+                if modo == "diario":
                     parar = True
-                    break
                 continue
             seguidas_conhecidas = 0
             texto = (rv.get("extracted_snippet") or {}).get("original") or rv.get("snippet") or ""
