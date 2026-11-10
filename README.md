@@ -32,7 +32,7 @@ Depois disso, tudo roda sozinho todo dia às 7h.
 Cada página de avaliações conta como uma busca.
 
 - **Avaliações novas:** todo dia, cerca de 1 busca por loja (~90 por mês).
-- **Histórico:** as buscas que sobram no mês trazem as avaliações antigas, até 5 páginas (~100 avaliações) por dia, continuando de onde parou. O script sempre guarda uma reserva para a coleta diária até o fim do mês.
+- **Histórico:** as buscas que sobram no mês trazem as avaliações antigas, até 20 páginas (~400 avaliações) por dia, continuando de onde parou. O script sempre guarda uma reserva para a coleta diária até o fim do mês.
 - O progresso fica em `estado.json`, e o dashboard avisa enquanto o histórico ainda está sendo carregado.
 - **Quer o histórico de uma vez?** Assine um plano pago por um mês e rode a Action no modo `completo`.
 

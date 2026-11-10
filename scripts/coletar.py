@@ -15,7 +15,7 @@ Variáveis de ambiente:
   ANTHROPIC_API_KEY      (opcional) classifica temas com o Claude; sem ela, usa palavras-chave
   MODO                   "diario" (padrão) | "completo" = busca todo o histórico de uma vez (plano pago)
   DATA_INICIO            (opcional, AAAA-MM-DD) não busca avaliações anteriores a essa data
-  HISTORICO_POR_DIA      (opcional) máximo de páginas de histórico por dia, somando as lojas (padrão 5)
+  HISTORICO_POR_DIA      (opcional) máximo de páginas de histórico por dia, somando as lojas (padrão 20)
   RESERVA_BUSCAS         (opcional) buscas guardadas para a coleta diária (padrão 3 lojas x 31 dias)
 
 Usa só a biblioteca padrão do Python.
@@ -289,7 +289,7 @@ def main():
             limite = 10_000
         else:
             reserva = int(os.environ.get("RESERVA_BUSCAS") or 3 * 31)
-            por_dia = int(os.environ.get("HISTORICO_POR_DIA") or 5)
+            por_dia = int(os.environ.get("HISTORICO_POR_DIA") or 20)
             saldo = buscas_restantes(chave)
             limite = max(0, min(por_dia, saldo - reserva))
             log(f"Histórico: saldo {saldo} buscas, reserva {reserva}, hoje até {limite} páginas")
