@@ -1,24 +1,24 @@
 {
   "historico": {
     "capao": {
-      "token": "CjEIARIpCgoAP72GSDhV0s__EhDrC0AaTqIH0kTCPnwAAAAAGgn92egCZIOFXSwYACIA",
+      "token": "CjEIARIpCgoAP72GTqiEUB__EhCbYwEbejQ_sVjAewsAAAAAGgn960QCZOqIRQEYACIA",
       "iniciado": true,
       "completo": false,
-      "paginas": 28
+      "paginas": 35
     },
     "ipiranga": {
-      "token": "CjEIARIpCgoAP72F-Q8aHv__EhCoWgSls3yh0N_y3hUAAAAAGgn9-ywCX5Dxoe8YACIA",
+      "token": "CjEIARIpCgoAP72F-6LrN2__EhD1MNka1DRluzE6jY0AAAAAGgn9-zQCX7ous3YYACIA",
       "iniciado": true,
       "completo": false,
-      "paginas": 28
+      "paginas": 35
     },
     "novo-hamburgo": {
-      "token": "Ci8IARInCgoAP72GE8UbG7__EhA1PL_sbn1pFOyvXs8AAAAAGgf_AmE8UbG7GAAiAA",
+      "token": "CjEIARIpCgoAP72GIKdlcN__EhBv3nCReMPWho0_T5cAAAAAGgn92gsCYgp2Vw0YACIA",
       "iniciado": true,
       "completo": false,
-      "paginas": 24
+      "paginas": 30
     }
   },
-  "ultima_execucao": "2026-11-13T06:53:59-03:00",
+  "ultima_execucao": "2026-11-14T06:17:05-03:00",
   "buscas_ultima_execucao": 23
 }
