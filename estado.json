@@ -7,18 +7,18 @@
       "paginas": 41
     },
     "ipiranga": {
-      "token": "CjEIARIpCgoAP72GACPkHG__EhAkwCEeH64pCqByQmIAAAAAGgn92VgCYAI-QcYYACIA",
+      "token": "CjEIARIpCgoAP72GAhDlkZ__EhCkuQ9_cQvcwHd_pOYAAAAAGgn92YACYCEOWRkYACIA",
       "iniciado": true,
       "completo": false,
-      "paginas": 42
+      "paginas": 44
     },
     "novo-hamburgo": {
-      "token": "CjEIARIpCgoAP72GJsQdvZ__EhDVXMmb5BeEuFkkGIkAAAAAGgn9_RYCYmxB29kYACIA",
+      "token": "CjEIARIpCgoAP72GKg3kzn__EhCiachNVfSRw8pYrvgAAAAAGgn92gACYqDeTOcYACIA",
       "iniciado": true,
       "completo": false,
-      "paginas": 37
+      "paginas": 38
     }
   },
-  "ultima_execucao": "2026-11-15T06:47:18-03:00",
-  "buscas_ultima_execucao": 24
+  "ultima_execucao": "2026-11-16T07:04:12-03:00",
+  "buscas_ultima_execucao": 7
 }
